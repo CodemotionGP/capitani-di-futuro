@@ -283,11 +283,10 @@ async function submitAll(respondentData) {
                 job_title: respondentData.job_title,
                 company: respondentData.company,
                 province: respondentData.province,
-                company_size: respondentData.employees, // Riceve 'N/D' automaticamente se Freelance
+                company_size: respondentData.employees,
                 questionnaire_id: state.questionnaire.id,
                 answers: state.answers,
-                sorgente: respondentData.sorgente,
-                source_ref: state.sourceRef || 'web'
+                source_ref: respondentData.sorgente
             }]);
 
         if (rError) throw rError;
