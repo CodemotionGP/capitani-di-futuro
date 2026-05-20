@@ -505,7 +505,7 @@ function renderFinalForm() {
             company: window.isFreelance ? 'N/D' : (document.getElementById('resp-company')?.value || 'N/D'),
             province: window.isFreelance ? 'N/D' : (document.getElementById('resp-province')?.value || 'N/D'),
             employees: window.isFreelance ? 'N/D' : (document.getElementById('resp-employees')?.value || 'N/D'),
-            sorgente: new URLSearchParams(window.location.search).get('ref') || 'Diretto'
+            sorgente: (new URLSearchParams(window.location.search).get('ref') || 'Diretto').split('/')[0]
         };
 
         await submitAll(respondentData);
