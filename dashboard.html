@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Hub Questionari</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased">
+
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-xs">
+        <span class="text-xs font-mono text-slate-400 uppercase tracking-wider font-bold">ADMIN PANEL v2.0</span>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        
+        <div id="hub-view" class="fade-in space-y-6">
+            <div class="space-y-1.5">
+                <h2 class="text-3xl font-black tracking-tight text-slate-900">Seleziona una Missione</h2>
+                <p class="text-slate-500 text-sm">Scegli il questionario per visualizzare le risposte e le anagrafiche dei candidati.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                
+                <div onclick="openQuestionnaire('capitani-futuro-id', 'Capitani di Futuro')" 
+                     class="group bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm cursor-pointer hover:border-blue-500 hover:shadow-md transition-all duration-300">
+                    
+                    <div class="h-56 w-full overflow-hidden relative border-b border-slate-100 bg-slate-50">
+                        <img src="landing.jpg" alt="Capitani di Futuro" class="w-full h-full object-contain group-hover:scale-103 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent"></div>
+                    </div>
+
+                    <div class="p-6 flex justify-center">
+                        <button class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold uppercase tracking-[0.2em] px-10 py-4 rounded-2xl transition-all duration-300 shadow-sm active:scale-95">
+                            VAI AI TEST
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-100/60 rounded-3xl border border-dashed border-slate-300 p-6 flex flex-col justify-center items-center text-center space-y-3 min-h-[350px]">
+                    <div class="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-xl">+</div>
+                    <h3 class="text-sm font-bold text-slate-400 tracking-wider">NUOVO TEST</h3>
+                </div>
+
+            </div>
+        </div>
+
+
+        <div id="data-view" class="hidden fade-in space-y-6">
+            
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-6">
+                <div class="flex items-center gap-4">
+                    <button onclick="closeQuestionnaire()" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold uppercase tracking-widest px-4 py-3 rounded-xl transition-all cursor-pointer shadow-xs">
+                        ← Torna all'Hub
+                    </button>
+                    <div>
+                        <h2 id="selected-title" class="text-2xl font-black text-slate-900">Caricamento...</h2>
+                        <p class="text-slate-500 text-xs mt-0.5">Record salvati nel database Supabase.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                <th class="p-4">Data</th>
+                                <th class="p-4">Candidato</th>
+                                <th class="p-4">Contatti (Mail/Tel)</th>
+                                <th class="p-4">Azienda / Prov</th>
+                                <th class="p-4">Ruolo</th>
+                                <th class="p-4 whitespace-nowrap">Dipendenti</th>
+                                <th class="p-4 whitespace-nowrap">Sorgente</th>
+                                <th class="p-4 text-right">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-table-body" class="text-sm divide-y divide-slate-100 font-medium text-slate-600">
+                            <tr>
+                                <td colspan="6" class="p-10 text-center text-slate-400 font-mono text-xs">Nessun dato caricato. Seleziona una missione.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // CONFIGURAZIONE SUPABASE
+        const SUPABASE_URL = "https://lccemvnwmkbmzdyscjqy.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjY2Vtdm53bWtibXpkeXNjanF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNTY5MTUsImV4cCI6MjA5MzczMjkxNX0.415aOBkflrgd59NmUpld7tXgHARaW0KN0DUlOj-y5eY";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const viewHub = document.getElementById('hub-view');
+        const viewData = document.getElementById('data-view');
+        const selectedTitle = document.getElementById('selected-title');
+        const tableBody = document.getElementById('data-table-body');
+
+        // APRI QUESTIONARIO
+        async function openQuestionnaire(qId, qTitle) {
+            selectedTitle.innerText = qTitle;
+            viewHub.classList.add('hidden');
+            viewData.classList.remove('hidden');
+            await fetchSubmissions(); 
+        }
+
+        // CHIUDI QUESTIONARIO
+        function closeQuestionnaire() {
+            viewData.classList.add('hidden');
+            viewHub.classList.remove('hidden');
+        }
+
+        // AZIONE: APRI REPORT PDF
+        function openReport(respondentId) {
+            // Reindirizza alla pagina del report passando l'ID dell'utente loggato
+            // Puoi personalizzare il nome del file (es: report.html, generate-pdf.py, ecc.)
+            const reportUrl = `report.html?id=${respondentId}`;
+            window.open(reportUrl, '_blank');
+        }
+
+        // RECUPERA DATI DA SUPABASE
+        async function fetchSubmissions() {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="p-10 text-center">
+                        <div class="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                        <span class="text-xs text-slate-400 font-mono uppercase tracking-widest">Sincronizzazione dati...</span>
+                    </td>
+                </tr>
+            `;
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('respondents')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-400 font-mono text-xs">Nessuna compilazione trovata.</td></tr>`;
+                    return;
+                }
+
+                tableBody.innerHTML = data.map(row => {
+                    const date = new Date(row.created_at).toLocaleDateString('it-IT', {
+                        day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute:'2-digit'
+                    });
+                    
+                    return `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                                <td class="p-4 font-mono text-xs text-slate-400 whitespace-nowrap">${date}</td>
+                                
+                                <td class="p-4 font-bold text-slate-900 text-sm whitespace-nowrap">
+                                    ${row.full_name || 'N/D'}
+                                </td>
+
+                                <td class="p-4">
+                                    <div class="text-xs text-slate-700 font-bold">${row.email || 'N/D'}</div>
+                                    <div class="text-xs text-slate-500 mt-0.5">${row.phone || 'N/D'}</div>
+                                </td>
+                                
+                                <td class="p-4">
+                                    <div class="text-sm font-semibold text-slate-800">${row.company || 'N/D'}</div>
+                                    <span class="inline-block mt-1 bg-slate-100 border border-slate-200 text-slate-600 font-bold text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider">${row.province || 'N/D'}</span>
+                                </td>
+                                
+                                <td class="p-4">
+                                    <div class="text-sm font-black text-blue-700 uppercase tracking-wide">${row.job_title || 'N/D'}</div>
+                                </td>
+                                
+                                <td class="p-4 whitespace-nowrap">
+                                    <span class="bg-slate-50 text-slate-700 border border-slate-200 text-xs px-2.5 py-1 rounded-full font-bold">
+                                        ${row.company_size || row.employees || 'N/D'}
+                                    </span>
+                                </td>
+                                
+                                <td class="p-4 whitespace-nowrap">
+                                    <span class="bg-amber-50 text-amber-700 border border-amber-200 text-xs px-2 py-1 rounded-md font-bold">
+                                        ${row.sorgente || 'Diretto'}
+                                    </span>
+                                </td>
+                                
+                                <td class="p-4 text-right">
+                                    <button onclick="openReport('${row.id}')"
+                                        class="text-xs bg-white border border-slate-200 shadow-sm hover:bg-blue-600 text-slate-700 hover:text-white px-3 py-2 rounded-lg font-bold transition-all">
+                                        Vedi PDF
+                                    </button>
+                                </td>
+                            </tr>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error(err);
+                tableBody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-red-500 font-mono text-xs">Errore: ${err.message}</td></tr>`;
+            }
+        }
+    </script>
+</body>
+</html>
