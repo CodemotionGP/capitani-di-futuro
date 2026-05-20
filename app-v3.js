@@ -503,7 +503,8 @@ function renderFinalForm() {
 			job_title: document.getElementById('resp-job-title').value,
 			company: window.isFreelance ? 'N/D' : document.getElementById('resp-company').value,
 			province: window.isFreelance ? 'N/D' : document.getElementById('resp-province').value,
-			employees: window.isFreelance ? 'N/D' : document.getElementById('resp-employees').value
+			employees: window.isFreelance ? 'N/D' : document.getElementById('resp-employees').value,
+			sorgente: new URLSearchParams(window.location.search).get('ref') || 'Diretto'
 		};
 
         await submitAll(respondentData);
