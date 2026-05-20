@@ -495,18 +495,18 @@ function renderFinalForm() {
             </span>
         `;
 
-        // Se è freelance assegna il testo fisso, altrimenti prende il valore inserito
-		const respondentData = {
-			name: document.getElementById('resp-name').value,
-			email: document.getElementById('resp-email').value,
-			phone: document.getElementById('resp-phone').value,
-			role: window.isFreelance ? 'Libero Professionista' : 'Dipendente / Titolare',
-			job_title: document.getElementById('resp-job-title').value,
-			company: window.isFreelance ? 'N/D' : document.getElementById('resp-company').value,
-			province: window.isFreelance ? 'N/D' : document.getElementById('resp-province').value,
-			employees: window.isFreelance ? 'N/D' : document.getElementById('resp-employees').value,
-			sorgente: new URLSearchParams(window.location.search).get('ref') || 'Diretto'
-		};
+		// Se è freelance assegna il testo fisso, altrimenti prende il valore inserito
+        const respondentData = {
+            name: document.getElementById('resp-name')?.value || 'N/D',
+            email: document.getElementById('resp-email')?.value || 'N/D',
+            phone: document.getElementById('resp-phone')?.value || 'N/D',
+            role: window.isFreelance ? 'Libero Professionista' : 'Dipendente / Titolare',
+            job_title: document.getElementById('resp-job-title')?.value || 'N/D',
+            company: window.isFreelance ? 'N/D' : (document.getElementById('resp-company')?.value || 'N/D'),
+            province: window.isFreelance ? 'N/D' : (document.getElementById('resp-province')?.value || 'N/D'),
+            employees: window.isFreelance ? 'N/D' : (document.getElementById('resp-employees')?.value || 'N/D'),
+            sorgente: new URLSearchParams(window.location.search).get('ref') || 'Diretto'
+        };
 
         await submitAll(respondentData);
     };
