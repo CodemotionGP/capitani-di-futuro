@@ -280,11 +280,13 @@ async function submitAll(respondentData) {
                 email: respondentData.email,
                 phone: respondentData.phone,
                 role: respondentData.role,
+                job_title: respondentData.job_title,
                 company: respondentData.company,
                 province: respondentData.province,
                 company_size: respondentData.employees, // Riceve 'N/D' automaticamente se Freelance
                 questionnaire_id: state.questionnaire.id,
                 answers: state.answers,
+                sorgente: respondentData.sorgente,
                 source_ref: state.sourceRef || 'web'
             }]);
 
