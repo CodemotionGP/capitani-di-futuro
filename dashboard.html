@@ -6,6 +6,7 @@
     <title>Admin Panel - Hub Questionari</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+	<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -349,6 +350,7 @@
             const selectedProvince = document.getElementById('filter-province').value;
             const selectedEmployees = document.getElementById('filter-employees').value;
 
+            // 1. Applica i tuoi filtri nativi in modo preciso
             const filteredData = allSubmissions.filter(row => {
                 const src = (row.source_ref || 'Diretto').split('/')[0];
                 const size = row.company_size || row.employees || 'N/D';
@@ -358,34 +360,34 @@
                 return matchSource && matchProvince && matchEmployees;
             });
 
-            if (filteredData.length === 0) { alert("Nessun dato da esportare."); return; }
+            if (filteredData.length === 0) {
+                alert("Nessun dato da esportare con i filtri selezionati.");
+                return;
+            }
 
-            let csvContent = "\uFEFF"; 
-            csvContent += "Data;Candidato;Email;Telefono;Azienda;PV;Qualifica;Dipendenti;Consulente\n";
+            // 2. Mappa i dati trasformandoli in colonne pulite e leggibili in italiano
+            const rowsToExport = filteredData.map(row => ({
+                "Data Compilazione": row.created_at ? new Date(row.created_at).toLocaleDateString('it-IT') : 'N/D',
+                "Candidato": row.full_name || 'N/D',
+                "Email": row.email || 'N/D',
+                "Telefono": row.phone || 'N/D',
+                "Ruolo attuale": row.role || 'N/D',
+                "Azienda": row.company || 'N/D',
+                "Provincia": row.province || 'N/D',
+                "Dimensione Azienda": row.company_size || row.employees || 'N/D',
+                "Consulente / Sorgente": row.source_ref || 'Diretto'
+            }));
 
-            filteredData.forEach(row => {
-                const date = new Date(row.created_at).toLocaleDateString('it-IT', {
-                    day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute:'2-digit'
-                });
-                const name = row.full_name || 'N/D';
-                const email = row.email || 'N/D';
-                const phone = row.phone || 'N/D';
-                const company = row.company || 'N/D';
-                const province = row.province || 'N/D';
-                const job = row.job_title || 'N/D';
-                const size = row.company_size || row.employees || 'N/D';
-                const src = (row.source_ref || 'Diretto').split('/')[0];
+            // 3. Genera il vero foglio di calcolo XLSX
+            const worksheet = XLSX.utils.json_to_sheet(rowsToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Candidati");
 
-                csvContent += `"${date}";"${name}";"${email}";"${phone}";"${company}";"${province}";"${job}";"${size}";"${src}"\n`;
-            });
+            // Imposta una larghezza automatica minima per le colonne per non far tagliare i testi
+            worksheet['!cols'] = [{ wch: 18 }, { wch: 25 }, { wch: 25 }, { wch: 15 }, { wch: 22 }, { wch: 22 }, { wch: 10 }, { wch: 18 }, { wch: 22 }];
 
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", "capitani_di_futuro_filtrati.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            // 4. Spara il download istantaneo in formato .xlsx
+            XLSX.writeFile(workbook, "Esportazione_Capitani_di_Futuro.xlsx");
         }
 		// --- MOTORE GESTIONE CONSULENTI ---
         const viewConsultants = document.getElementById('consultants-view');
