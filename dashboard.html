@@ -513,7 +513,23 @@
                 }, 2000);
             });
         }		
-				
+		
+		async function deleteReport(id) {
+            if (!confirm("Attenzione: Sei sicuro di voler eliminare definitivamente questo report? I dati andranno persi per sempre.")) {
+                return; // Se clicchi Annulla, si ferma qui
+            }
+            
+            // Elimina il record dalla tabella 'respondents'
+            const { error } = await supabaseClient.from('respondents').delete().eq('id', id);
+            
+            if (error) {
+                alert("Errore durante l'eliminazione: " + error.message);
+            } else {
+                // Ricarica la pagina per mostrare la tabella aggiornata
+                location.reload(); 
+            }
+        }
+		
 		// --- SISTEMA DI SICUREZZA E LOGIN ---
         const ADMIN_PASSWORD = "Password2026!"; // <-- CAMBIA QUESTA PASSWORD TRA LE VIRGOLETTE COME PREFERISCI
 
