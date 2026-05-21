@@ -337,7 +337,7 @@
                         <td class="p-4"><div class="text-sm font-black text-blue-700 uppercase tracking-wide">${row.job_title || 'N/D'}</div></td>
                         <td class="p-4 whitespace-nowrap"><span class="bg-slate-50 text-slate-700 border border-slate-200 text-xs px-2.5 py-1 rounded-full font-bold">${size}</span></td>
                         <td class="p-4 whitespace-nowrap"><span class="bg-amber-50 text-amber-700 border border-amber-200 text-xs px-2 py-1 rounded-md font-bold">${src}</span></td>
-                        <td class="p-4 text-right"><button onclick="openReport('${row.id}')" class="text-xs bg-white border border-slate-200 shadow-sm hover:bg-blue-600 text-slate-700 hover:text-white px-3 py-2 rounded-lg font-bold transition-all cursor-pointer">Vedi PDF</button></td>
+                        <td class="p-4 text-right"><button onclick="openReport('${row.id}')" class="text-xs bg-white border border-slate-200 shadow-sm hover:bg-blue-600 text-slate-700 hover:text-white px-3 py-2 rounded-lg font-bold transition-all cursor-pointer">Vedi PDF</button><button onclick="deleteReport('${row.id}')" class="ml-2 text-xs bg-red-50 text-red-600 hover:bg-red-100 font-bold py-1.5 px-3 rounded border border-red-200 transition-colors shadow-sm" title="Elimina Report">ELIMINA</button></td>
                     </tr>
                 `;
             }).join('');
