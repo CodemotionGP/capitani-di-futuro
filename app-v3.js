@@ -291,6 +291,29 @@ async function submitAll(respondentData) {
 
         if (rError) throw rError;
 
+// --- INIZIO: NOTIFICA EMAIL AUTOMATICA ---
+        try {
+            const nomeCandidato = respondentData.name || "Candidato Sconosciuto";
+            const sorgente = respondentData.sorgente || "Accesso Diretto";
+
+            await fetch("https://api.web3forms.com/submit", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
+                    access_key: "763f023c-7984-4eef-a984-e2837525e07f",
+                    subject: `Nuovo Capitano di Futuro: ${nomeCandidato}`,
+                    from_name: "Hub Questionari",
+                    message: `Un nuovo utente ha appena compilato il test Capitani di Futuro.\n\n👤 Candidato: ${nomeCandidato}\n👔 Consulente: ${sorgente}\n\nAccedi alla Dashboard Direzionale per visualizzare il report PDF.`
+                })
+            });
+        } catch (emailError) {
+            console.error("Errore notifica:", emailError);
+        }
+        // --- FINE: NOTIFICA EMAIL AUTOMATICA ---
+
         renderThankYou();
 
     } catch (err) {
