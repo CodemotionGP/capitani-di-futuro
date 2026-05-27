@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profexa — Dashboard Capitani di Futuro</title>
+    
+    <!-- TailwindCSS v4 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SheetJS Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Security Check Initialization -->
+    <script>
+        // Safe localStorage wrapper to bypass Firefox NS_ERROR_FILE_CORRUPTED exceptions
+        window.safeStorage = {
+            _memory: {},
+            getItem(key) {
+                try {
+                    return localStorage.getItem(key);
+                } catch (e) {
+                    console.warn("Storage item fallback used:", e);
+                    return this._memory[key] || null;
+                }
+            },
+            setItem(key, val) {
+                try {
+                    localStorage.setItem(key, val);
+                } catch (e) {
+                    console.warn("Storage item fallback used:", e);
+                    this._memory[key] = String(val);
+                }
+            },
+            removeItem(key) {
+                try {
+                    localStorage.removeItem(key);
+                } catch (e) {
+                    console.warn("Storage item fallback used:", e);
+                    delete this._memory[key];
+                }
+            }
+        };
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .font-Inter {
+            font-family: 'Inter', sans-serif;
+        }
+        .fade-in { 
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+        }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(12px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased" style="display: none;">
+
+    <!-- Header Fissa -->
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-50 px-6 py-4 shadow-sm flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <span class="text-xs font-mono text-slate-400 uppercase tracking-wider font-bold">Plancia Direzionale</span>
+            <span class="text-sm font-black text-slate-800 uppercase tracking-widest bg-slate-100 border border-slate-200 px-3 py-1 rounded-xl">👔 Capitani di Futuro</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="tornaAllHub()" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2">
+                ← Torna all'Hub
+            </button>
+            <button onclick="logoutAdmin()" class="bg-white hover:bg-red-600 text-slate-500 hover:text-white border border-slate-200 hover:border-red-600 font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2">
+                ESCI
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-12">
+
+        <!-- ================================================
+             DATA VIEW — CAPITANI DI FUTURO
+        ================================================ -->
+        <div id="data-view" class="fade-in space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-6">
+                <div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <h2 class="text-3xl font-black text-slate-900 font-Inter leading-none">Risposte dei Candidati</h2>
+                        <button onclick="openConsultants()" 
+                                class="bg-slate-900 hover:bg-indigo-600 text-white font-bold px-4 py-2 rounded-xl text-[10px] uppercase tracking-wider transition-all cursor-pointer shadow-md font-Inter flex items-center gap-1.5 active:scale-95">
+                            🔗 Gestione Consulenti
+                        </button>
+                    </div>
+                    <p class="text-slate-500 text-xs mt-2">Record risposte memorizzati nel database Supabase.</p>
+                </div>
+            </div>
+
+            <!-- Filtri -->
+            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-wrap gap-4 items-end">
+                <div class="flex-1 min-w-[140px]">
+                    <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 font-mono">Sorgente (Ref)</label>
+                    <select id="filter-source" onchange="applyFilters()" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none bg-white cursor-pointer text-sm font-bold text-slate-700 shadow-xs">
+                        <option value="Tutti">Tutti</option>
+                    </select>
+                </div>
+                <div class="flex-1 min-w-[140px]">
+                    <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 font-mono">Provincia</label>
+                    <select id="filter-province" onchange="applyFilters()" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none bg-white cursor-pointer text-sm font-bold text-slate-700 shadow-xs">
+                        <option value="Tutte">Tutte</option>
+                    </select>
+                </div>
+                <div class="flex-1 min-w-[140px]">
+                    <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 font-mono">Dipendenti</label>
+                    <select id="filter-employees" onchange="applyFilters()" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none bg-white cursor-pointer text-sm font-bold text-slate-700 shadow-xs">
+                        <option value="Tutti">Tutti</option>
+                    </select>
+                </div>
+                <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3.5 rounded-xl uppercase tracking-widest text-xs transition-all shadow-md cursor-pointer whitespace-nowrap active:scale-95">
+                    📥 Esporta Excel
+                </button>
+            </div>
+
+            <!-- Tabella -->
+            <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                <th class="p-4">Data</th>
+                                <th class="p-4">Candidato</th>
+                                <th class="p-4">Contatti</th>
+                                <th class="p-4">Azienda / Prov</th>
+                                <th class="p-4">Ruolo</th>
+                                <th class="p-4 whitespace-nowrap">Dipendenti</th>
+                                <th class="p-4 whitespace-nowrap">Sorgente</th>
+                                <th class="p-4 text-right">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-table-body" class="text-sm divide-y divide-slate-100 font-medium text-slate-600">
+                            <tr><td colspan="8" class="p-10 text-center text-slate-400 font-mono text-xs">Caricamento delle risposte in corso...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================
+             CONSULTANTS VIEW
+        ================================================ -->
+        <div id="consultants-view" class="hidden fade-in space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-6">
+                <div>
+                    <div class="flex items-center gap-4">
+                        <button onclick="closeAll()" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold uppercase tracking-widest px-4 py-3 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95">
+                            ← Torna alle risposte
+                        </button>
+                        <h2 class="text-3xl font-black text-slate-900 font-Inter leading-none">Gestione Consulenti</h2>
+                    </div>
+                    <p class="text-slate-500 text-xs mt-2">Configura link referral dedicati per la rete consulenti.</p>
+                </div>
+            </div>
+
+            <!-- Form aggiungi consulente -->
+            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-wrap gap-4 items-end">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 font-mono">Nome Consulente</label>
+                    <input type="text" id="new-consultant-name" placeholder="Es. Rossi & Associati"
+                           class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-sm shadow-xs font-semibold">
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 font-mono">Codice Referral (ref)</label>
+                    <input type="text" id="new-consultant-ref" placeholder="Es. rossi-consulenza"
+                           class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-600 outline-none text-sm shadow-xs font-semibold">
+                </div>
+                <button onclick="addConsultant()" class="bg-slate-950 hover:bg-indigo-600 text-white font-bold px-8 py-3.5 rounded-xl uppercase tracking-widest text-xs transition-colors shadow-lg cursor-pointer active:scale-95">
+                    + Crea Codice
+                </button>
+            </div>
+
+            <!-- Tabella consulenti -->
+            <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                            <th class="p-4">Nome</th>
+                            <th class="p-4">Link Questionario Capitani</th>
+                            <th class="p-4 text-center">Stato</th>
+                            <th class="p-4 text-right">Azione</th>
+                        </tr>
+                    </thead>
+                    <tbody id="consultants-table-body" class="text-sm font-medium text-slate-600 divide-y divide-slate-100">
+                        <tr><td colspan="4" class="p-10 text-center text-slate-400">Caricamento consulenti in corso...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // ============================================================
+        // CONFIGURAZIONE & INIZIALIZZAZIONE DB SUPABASE
+        // ============================================================
+        const SUPABASE_URL = "https://lccemvnwmkbmzdyscjqy.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjY2Vtdm53bWtibXpkeXNjanF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNTY5MTUsImV4cCI6MjA5MzczMjkxNX0.415aOBkflrgd59NmUpld7tXgHARaW0KN0DUlOj-y5eY";
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const CAPITANI_BASE_URL = "https://codemotiongp.github.io/capitani-di-futuro/?ref=";
+
+        // Auto-load responses on entry with active session check
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const access_token = urlParams.get('access_token');
+                const refresh_token = urlParams.get('refresh_token');
+
+                if (access_token && refresh_token) {
+                    // Se i token sono passati nell'URL (caso file://), impostiamo la sessione manualmente
+                    await db.auth.setSession({ access_token, refresh_token });
+                    // Rimuoviamo i token dall'URL visibile per pulizia
+                    const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                    window.history.replaceState({}, document.title, cleanUrl);
+                }
+
+                // Controllo reale asincrono della sessione attiva su Supabase
+                const { data: { session } } = await db.auth.getSession();
+                if (!session) {
+                    // Se non c'è sessione reale, reindirizza
+                    safeStorage.removeItem('admin_logged_in');
+                    window.location.href = 'admin.html';
+                    return;
+                }
+                
+                // Sessione valida: impostiamo lo stato locale, mostriamo il body e carichiamo i dati
+                safeStorage.setItem('admin_logged_in', 'true');
+                document.body.style.display = 'block';
+                fetchSubmissions();
+            } catch (err) {
+                console.error("Errore durante il controllo sessione:", err);
+                window.location.href = 'admin.html';
+            }
+        });
+
+        // Navigation
+        function showView(name) {
+            document.getElementById('data-view').classList.add('hidden');
+            document.getElementById('consultants-view').classList.add('hidden');
+            const el = document.getElementById(name);
+            el.classList.remove('hidden');
+        }
+
+        function closeAll() {
+            showView('data-view');
+        }
+
+        async function logoutAdmin() {
+            try {
+                await db.auth.signOut();
+            } catch (e) {
+                console.warn("SignOut Supabase fallito:", e);
+            }
+            safeStorage.removeItem('admin_logged_in');
+            window.location.href = 'admin.html';
+        }
+
+        // Ritorna all'hub di admin passando i token se siamo in locale file://
+        async function tornaAllHub() {
+            try {
+                const { data: { session } } = await db.auth.getSession();
+                if (session && window.location.protocol === 'file:') {
+                    const access_token = session.access_token;
+                    const refresh_token = session.refresh_token;
+                    window.location.href = `admin.html?access_token=${encodeURIComponent(access_token)}&refresh_token=${encodeURIComponent(refresh_token)}`;
+                } else {
+                    window.location.href = 'admin.html';
+                }
+            } catch (e) {
+                console.error("Errore ritorno all'hub:", e);
+                window.location.href = 'admin.html';
+            }
+        }
+
+        // ============================================================
+        // SEZIONE: CAPITANI DI FUTURO (ANALISI RISPOSTE / EXCEL)
+        // ============================================================
+        let allSubmissions = [];
+
+        async function fetchSubmissions() {
+            const body = document.getElementById('data-table-body');
+            body.innerHTML = `<tr><td colspan="8" class="p-10 text-center">
+                <div class="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                <span class="text-xs text-slate-400 font-mono uppercase tracking-widest font-bold">Caricamento risposte...</span>
+            </td></tr>`;
+
+            try {
+                const { data, error } = await db.from('respondents').select('*').order('created_at', { ascending: false });
+                if (error) throw error;
+                allSubmissions = data || [];
+                populateDropdowns();
+                applyFilters();
+            } catch (err) {
+                body.innerHTML = `<tr><td colspan="8" class="p-10 text-center text-red-600 font-mono text-xs">Errore nel caricamento: ${err.message}</td></tr>`;
+            }
+        }
+
+        function populateDropdowns() {
+            const sources = new Set(), provinces = new Set(), sizes = new Set();
+            allSubmissions.forEach(r => {
+                const src = (r.source_ref || 'Diretto').split('/')[0];
+                if (src) sources.add(src);
+                if (r.province) provinces.add(r.province);
+                const s = r.company_size || r.employees;
+                if (s) sizes.add(s);
+            });
+            document.getElementById('filter-source').innerHTML   = '<option value="Tutti">Tutti</option>'  + [...sources].sort().map(s => `<option value="${s}">${s}</option>`).join('');
+            document.getElementById('filter-province').innerHTML = '<option value="Tutte">Tutte</option>' + [...provinces].sort().map(p => `<option value="${p}">${p}</option>`).join('');
+            document.getElementById('filter-employees').innerHTML= '<option value="Tutti">Tutti</option>'  + [...sizes].sort().map(e => `<option value="${e}">${e}</option>`).join('');
+        }
+
+        function applyFilters() {
+            const fSrc  = document.getElementById('filter-source').value;
+            const fProv = document.getElementById('filter-province').value;
+            const fEmp  = document.getElementById('filter-employees').value;
+            const body  = document.getElementById('data-table-body');
+
+            const filtered = allSubmissions.filter(r => {
+                const src = (r.source_ref || 'Diretto').split('/')[0];
+                const s   = r.company_size || r.employees || 'N/D';
+                return (fSrc === 'Tutti' || src === fSrc) && (fProv === 'Tutte' || r.province === fProv) && (fEmp === 'Tutti' || s === fEmp);
+            });
+
+            if (!filtered.length) {
+                body.innerHTML = `<tr><td colspan="8" class="p-10 text-center text-slate-400 font-mono text-xs">Nessun candidato corrisponde ai filtri selezionati.</td></tr>`;
+                return;
+            }
+
+            body.innerHTML = filtered.map(r => {
+                const date = new Date(r.created_at).toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+                const src  = (r.source_ref || 'Diretto').split('/')[0];
+                const s    = r.company_size || r.employees || 'N/D';
+                return `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="p-4 font-mono text-xs text-slate-400 whitespace-nowrap">${date}</td>
+                    <td class="p-4 font-bold text-slate-900 text-sm whitespace-nowrap font-Inter">${r.full_name || 'N/D'}</td>
+                    <td class="p-4">
+                        <div class="text-xs text-slate-700 font-bold">${r.email || 'N/D'}</div>
+                        <div class="text-xs text-slate-500 mt-0.5">${r.phone || 'N/D'}</div>
+                    </td>
+                    <td class="p-4">
+                        <div class="text-sm font-semibold text-slate-800">${r.company || 'N/D'}</div>
+                        <span class="inline-block mt-1 bg-slate-100 border border-slate-200 text-slate-600 font-bold text-[9px] px-2 py-0.5 rounded uppercase font-mono">${r.province || 'N/D'}</span>
+                    </td>
+                    <td class="p-4"><div class="text-sm font-black text-blue-700 uppercase tracking-wide font-Inter text-xs">${r.job_title || 'N/D'}</div></td>
+                    <td class="p-4 whitespace-nowrap"><span class="bg-slate-50 text-slate-700 border border-slate-200 text-[10px] px-2.5 py-1 rounded-full font-bold font-mono">${s}</span></td>
+                    <td class="p-4 whitespace-nowrap"><span class="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] px-2 py-1 rounded font-bold font-mono">${src}</span></td>
+                    <td class="p-4 text-right whitespace-nowrap">
+                        <button onclick="openReport('${r.id}')" class="text-[10px] bg-white border border-slate-200 shadow-xs hover:bg-blue-600 text-slate-700 hover:text-white px-3 py-2 rounded-lg font-black uppercase tracking-wider transition-all cursor-pointer">Apri Report</button>
+                        <button onclick="deleteReport('${r.id}')" class="ml-2 text-[10px] bg-red-50 text-red-600 hover:bg-red-100 font-black py-2 px-3 rounded-lg border border-red-200 transition-colors cursor-pointer uppercase tracking-wider">Elimina</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function openReport(id) { window.open(`report.html?id=${id}`, '_blank'); }
+
+        async function deleteReport(id) {
+            if (!confirm("Eliminare questo report definitivamente dal database?")) return;
+            const { error } = await db.from('respondents').delete().eq('id', id);
+            if (error) alert("Errore: " + error.message);
+            else fetchSubmissions();
+        }
+
+        function exportToExcel() {
+            const fSrc  = document.getElementById('filter-source').value;
+            const fProv = document.getElementById('filter-province').value;
+            const fEmp  = document.getElementById('filter-employees').value;
+            const filtered = allSubmissions.filter(r => {
+                const src = (r.source_ref || 'Diretto').split('/')[0];
+                const s   = r.company_size || r.employees || 'N/D';
+                return (fSrc === 'Tutti' || src === fSrc) && (fProv === 'Tutte' || r.province === fProv) && (fEmp === 'Tutti' || s === fEmp);
+            });
+            if (!filtered.length) { alert("Nessun dato da esportare."); return; }
+
+            const rows = filtered.map(r => ({
+                "Data":       r.created_at ? new Date(r.created_at).toLocaleDateString('it-IT') : 'N/D',
+                "Candidato":  r.full_name || 'N/D',
+                "Email":      r.email || 'N/D',
+                "Telefono":   r.phone || 'N/D',
+                "Ruolo":      r.job_title || 'N/D',
+                "Azienda":    r.company || 'N/D',
+                "Provincia":  r.province || 'N/D',
+                "Dipendenti": r.company_size || r.employees || 'N/D',
+                "Sorgente":   r.source_ref || 'Diretto'
+            }));
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Candidati");
+            ws['!cols'] = [{wch:18},{wch:25},{wch:25},{wch:15},{wch:22},{wch:22},{wch:10},{wch:18},{wch:22}];
+            XLSX.writeFile(wb, "Esportazione_Capitani_di_Futuro.xlsx");
+        }
+
+        // ============================================================
+        // SEZIONE: GESTIONE CONSULENTI (CRUD)
+        // ============================================================
+        async function openConsultants() {
+            showView('consultants-view');
+            await fetchConsultants();
+        }
+
+        async function fetchConsultants() {
+            const body = document.getElementById('consultants-table-body');
+            body.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 text-xs">Caricamento in corso...</td></tr>`;
+            try {
+                const { data, error } = await db.from('consulenti').select('*').order('nome');
+                if (error) throw error;
+                if (!data?.length) {
+                    body.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 text-xs">Nessun consulente registrato in anagrafica.</td></tr>`;
+                    return;
+                }
+                body.innerHTML = data.map(c => `
+                <tr class="hover:bg-slate-50 transition-colors ${!c.is_active ? 'opacity-55' : ''}">
+                    <td class="p-4 font-bold text-slate-900 font-Inter text-sm">${c.nome}</td>
+                    <td class="p-4">
+                        <div class="flex items-center gap-2">
+                            <input type="text" readonly value="${CAPITANI_BASE_URL}${c.ref_code}"
+                                   class="text-xs bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 w-80 text-slate-600 font-mono outline-none shadow-inner">
+                            <button onclick="copyLink(this, '${CAPITANI_BASE_URL}${c.ref_code}')"
+                                    class="text-[10px] uppercase font-bold bg-white border border-slate-200 px-3 py-2 rounded-lg hover:bg-indigo-50 cursor-pointer text-indigo-950 shadow-xs transition-all">
+                                Copia
+                            </button>
+                        </div>
+                    </td>
+                    <td class="p-4 text-center font-mono">
+                        <span class="text-[9px] font-black uppercase px-2 py-1 rounded-md tracking-wider ${c.is_active ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-red-100 text-red-800 border border-red-200'}">
+                            ${c.is_active ? '● ATTIVO' : '○ DISABILITATO'}
+                        </span>
+                    </td>
+                    <td class="p-4 text-right">
+                        <div class="flex justify-end items-center gap-2">
+                            <button onclick="toggleConsultant('${c.id}', ${c.is_active})"
+                                    class="text-[10px] uppercase tracking-widest font-black px-3 py-2 border rounded-lg transition-colors cursor-pointer ${c.is_active ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'}">
+                                ${c.is_active ? 'Disattiva' : 'Attiva'}
+                            </button>
+                            <button onclick="deleteConsultant('${c.id}')"
+                                    class="p-2 border border-slate-200 text-slate-400 hover:bg-red-50 hover:border-red-200 hover:text-red-600 rounded-lg transition-colors cursor-pointer">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>`).join('');
+            } catch (err) {
+                body.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-red-600 text-xs font-bold">Errore: ${err.message}</td></tr>`;
+            }
+        }
+
+        async function addConsultant() {
+            const name = document.getElementById('new-consultant-name').value.trim();
+            const ref  = document.getElementById('new-consultant-ref').value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (!name || !ref) { alert("Compila entrambi i campi prima di salvare."); return; }
+            const { error } = await db.from('consulenti').insert([{ nome: name, ref_code: ref, is_active: true }]);
+            if (error) alert("Errore inserimento: " + error.message);
+            else {
+                document.getElementById('new-consultant-name').value = '';
+                document.getElementById('new-consultant-ref').value = '';
+                fetchConsultants();
+            }
+        }
+
+        async function toggleConsultant(id, current) {
+            const { error } = await db.from('consulenti').update({ is_active: !current }).eq('id', id);
+            if (error) alert("Errore modifica stato: " + error.message);
+            else fetchConsultants();
+        }
+
+        async function deleteConsultant(id) {
+            if (!confirm("Eliminare definitivamente questo record consulente?")) return;
+            const { error } = await db.from('consulenti').delete().eq('id', id);
+            if (error) alert("Errore eliminazione: " + error.message);
+            else fetchConsultants();
+        }
+
+        function copyLink(btn, text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const orig = btn.innerHTML;
+                btn.innerHTML = 'Copiato!';
+                btn.classList.add('text-emerald-700', 'bg-emerald-50', 'border-emerald-300');
+                setTimeout(() => { 
+                    btn.innerHTML = orig; 
+                    btn.classList.remove('text-emerald-700', 'bg-emerald-50', 'border-emerald-300'); 
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profexa Dashboard Premium v2 — Plancia Direzionale</title>
+       <!-- TailwindCSS v4 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .font-Inter {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Login Glassmorphism */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.25);
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Hover Card Hub Premium */
+        .hub-card-blue:hover {
+            border-color: #3B82F6;
+            box-shadow: 0 20px 40px -15px rgba(59, 130, 246, 0.25);
+            transform: translateY(-4px);
+        }
+        .hub-card-wpa:hover {
+            box-shadow: 0 25px 50px -15px rgba(99, 102, 241, 0.35);
+            transform: translateY(-6px);
+        }
+        .hub-card-dark:hover {
+            background-color: #0f172a;
+            border-color: #64748b;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.4);
+            transform: translateY(-4px);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen antialiased flex flex-col justify-between">
+
+<!-- ===================================================
+     LOGIN OVERLAY (Glassmorphism & Animated Gradient)
+ ==================================================== -->
+<div id="login-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-500 opacity-0 pointer-events-none" 
+     style="background: linear-gradient(-45deg, #020408, #110c24, #1a0f38, #020408); background-size: 400% 400%; animation: gradientBG 15s ease infinite;">
+    
+    <div class="glass-card p-8 md:p-10 rounded-[2.5rem] max-w-sm w-full text-center space-y-6">
+        <div class="space-y-3">
+            <span class="text-3xl block filter drop-shadow">🔐</span>
+            <h2 class="text-2xl font-black text-slate-900 uppercase tracking-wider font-Inter">Accesso Direzionale</h2>
+            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Profexa Consulting</p>
+        </div>
+        <div class="space-y-4 text-left">
+            <div>
+                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 ml-1 font-Inter">E-mail Amministratore</label>
+                <input type="email" id="admin-email" placeholder="es: admin@profexa.it"
+                       class="w-full px-5 py-3.5 rounded-2xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 focus:outline-none font-medium text-slate-800 shadow-inner transition-all bg-white/70">
+            </div>
+            <div>
+                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 ml-1 font-Inter">Password</label>
+                <input type="password" id="admin-password" placeholder="••••••••"
+                       onkeydown="if(event.key==='Enter') checkLogin()"
+                       class="w-full px-5 py-3.5 rounded-2xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 focus:outline-none font-bold text-slate-800 tracking-widest shadow-inner transition-all bg-white/70">
+            </div>
+            <button onclick="checkLogin()"
+                    class="w-full bg-slate-950 hover:bg-indigo-600 text-white font-bold py-4 rounded-2xl uppercase tracking-[0.2em] text-xs transition-all shadow-lg hover:shadow-indigo-500/20 active:scale-98 cursor-pointer mt-2">
+                Sblocca Plancia
+            </button>
+        </div>
+        <p id="login-error" class="text-red-600 text-xs font-bold hidden animate-pulse bg-red-50 py-2 rounded-xl border border-red-100">Credenziali di accesso non valide.</p>
+    </div>
+</div>
+
+<!-- ===================================================
+     DASHBOARD WRAPPER
+ ==================================================== -->
+<div id="dashboard-wrapper" class="hidden flex-1 flex flex-col">
+
+    <!-- Header con ESCI a destra centrato verticalmente -->
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-40 px-6 py-3 shadow-xs flex justify-between items-center">
+        <span class="text-xs font-black text-indigo-950 uppercase tracking-widest font-Inter">ADMIN PANEL v3.2 — Plancia Premium</span>
+        
+        <!-- Bottone ESCI posizionato e centrato a destra -->
+        <button onclick="logoutAdmin()" class="bg-white hover:bg-red-600 text-slate-500 hover:text-white border border-slate-200 hover:border-red-600 font-bold px-4 py-2 rounded-xl text-[10px] uppercase tracking-widest transition-all shadow-xs cursor-pointer flex items-center gap-2 group">
+            ESCI
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+        </button>
+    </header>
+
+    <!-- Main Section con padding ridotto verticalmente -->
+    <main class="max-w-7xl mx-auto px-4 pt-8 pb-8 w-full flex-1">
+
+        <!-- ================================================
+             HUB VIEW (Selection Menu) con spazi compattati
+        ================================================ -->
+        <div id="hub-view" class="fade-in space-y-6">
+            <div class="space-y-1">
+                <h2 class="text-3xl font-black tracking-tight text-slate-900 font-Inter leading-none">Seleziona una Missione</h2>
+                <p class="text-slate-500 text-xs font-medium">Scegli il modulo operativo da gestire.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 pt-2">
+
+                <!-- Card Capitani di Futuro -->
+                <div onclick="navigaVerso('dashboard-capitani.html')"
+                     class="group bg-white rounded-[2.2rem] border border-slate-200 overflow-hidden shadow-sm cursor-pointer transition-all duration-300 hub-card-blue flex flex-col justify-between">
+                    <div>
+                        <div class="h-44 w-full overflow-hidden relative border-b border-slate-100 bg-slate-50 flex items-center justify-center p-6">
+                            <img src="landing.jpg" alt="Capitani di Futuro" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500">
+                            <div class="absolute inset-0 bg-gradient-to-t from-white/50 via-transparent to-transparent"></div>
+                        </div>
+                        <div class="p-6">
+                            <h3 class="text-lg font-black text-slate-900 font-Inter mb-1 leading-none font-bold">Capitani di Futuro</h3>
+                            <p class="text-xs text-slate-400 font-medium mb-2 leading-relaxed">Gestione candidati, risposte e report del test attitudinale.</p>
+                        </div>
+                    </div>
+                    <div class="p-6 pt-0">
+                        <button onclick="event.stopPropagation(); navigaVerso('dashboard-capitani.html')"
+                                class="w-full bg-blue-600 group-hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-[0.2em] py-4 rounded-2xl transition-all duration-300 shadow-xs cursor-pointer font-Inter">
+                            GESTISCI CDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Card WPA Analisi di Clima -->
+                <div onclick="navigaVerso('dashboard-wpa.html')"
+                     class="group bg-white rounded-[2.2rem] border border-slate-200 overflow-hidden shadow-sm cursor-pointer transition-all duration-300 hub-card-blue flex flex-col justify-between">
+                    <div>
+                        <div class="h-44 w-full overflow-hidden relative border-b border-slate-100 bg-slate-50 flex items-center justify-center p-6">
+                            <img src="wpa-logo.png" alt="WPA" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500">
+                            <div class="absolute inset-0 bg-gradient-to-t from-white/50 via-transparent to-transparent"></div>
+                        </div>
+                        <div class="p-6">
+                            <h3 class="text-lg font-black text-slate-900 font-Inter mb-1 leading-none font-bold">Analisi di Clima WPA</h3>
+                            <p class="text-xs text-slate-400 font-medium mb-2 leading-relaxed">Gestisci aziende, monitora il tasso di partecipazione e visualizza i grafici WPA.</p>
+                        </div>
+                    </div>
+                    <div class="p-6 pt-0">
+                        <button onclick="event.stopPropagation(); navigaVerso('dashboard-wpa.html')"
+                                class="w-full text-white text-xs font-bold uppercase tracking-[0.2em] py-4 rounded-2xl transition-all duration-300 shadow-xs cursor-pointer font-Inter"
+                                style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                            GESTISCI WPA →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Colonna Vuota per il Futuro 3° Test -->
+                <div class="hidden md:flex rounded-[2.2rem] border-2 border-dashed border-slate-200 items-center justify-center p-6 bg-slate-50/50 min-h-[290px]">
+                    <div class="text-center space-y-1.5">
+                        <span class="text-xl opacity-60">➕</span>
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest font-Inter leading-none">Nuovo Test</p>
+                        <p class="text-[9px] text-slate-400 font-medium px-4">Spazio riservato per la prossima indagine.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<footer class="w-full py-6 text-center border-t border-slate-200 bg-white text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">
+    PROFEXA CONSULTING S.R.L. © 2026 — TUTTI I DIRITTI RISERVATI
+</footer>
+
+<script>
+    // Safe localStorage wrapper to bypass Firefox NS_ERROR_FILE_CORRUPTED exceptions
+    const safeStorage = {
+        _memory: {},
+        getItem(key) {
+            try {
+                return localStorage.getItem(key);
+            } catch (e) {
+                console.warn("Storage item fallback used:", e);
+                return this._memory[key] || null;
+            }
+        },
+        setItem(key, val) {
+            try {
+                localStorage.setItem(key, val);
+            } catch (e) {
+                console.warn("Storage item fallback used:", e);
+                this._memory[key] = String(val);
+            }
+        },
+        removeItem(key) {
+            try {
+                localStorage.removeItem(key);
+            } catch (e) {
+                console.warn("Storage item fallback used:", e);
+                delete this._memory[key];
+            }
+        }
+    };
+
+    // Configurazione Supabase
+    const SUPABASE_URL = "https://lccemvnwmkbmzdyscjqy.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjY2Vtdm53bWtibXpkeXNjanF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNTY5MTUsImV4cCI6MjA5MzczMjkxNX0.415aOBkflrgd59NmUpld7tXgHARaW0KN0DUlOj-y5eY";
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Check session on load
+    window.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const access_token = urlParams.get('access_token');
+            const refresh_token = urlParams.get('refresh_token');
+
+            if (access_token && refresh_token) {
+                // Se i token sono passati nell'URL (caso di ritorno dalle dashboard in file://), li impostiamo nel client
+                await db.auth.setSession({ access_token, refresh_token });
+                // Rimuoviamo i parametri visibili per pulizia
+                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+            }
+
+            const { data: { session } } = await db.auth.getSession();
+            if (session) {
+                safeStorage.setItem('admin_logged_in', 'true');
+                sbloccaDashboard();
+            } else {
+                safeStorage.removeItem('admin_logged_in');
+                mostraLogin();
+            }
+        } catch (err) {
+            console.error("Errore verifica sessione all'avvio:", err);
+            safeStorage.removeItem('admin_logged_in');
+            mostraLogin();
+        }
+    });
+
+    // Funzione di navigazione robusta che risolve l'isolamento del localStorage sotto file://
+    async function navigaVerso(targetUrl) {
+        try {
+            const { data: { session } } = await db.auth.getSession();
+            if (session && window.location.protocol === 'file:') {
+                // Sotto file:// passiamo temporaneamente il token di sessione nell'URL
+                const access_token = session.access_token;
+                const refresh_token = session.refresh_token;
+                window.location.href = `${targetUrl}?access_token=${encodeURIComponent(access_token)}&refresh_token=${encodeURIComponent(refresh_token)}`;
+            } else {
+                window.location.href = targetUrl;
+            }
+        } catch (e) {
+            console.error("Errore navigazione:", e);
+            window.location.href = targetUrl;
+        }
+    }
+
+    async function checkLogin() {
+        const email = document.getElementById('admin-email').value.trim();
+        const password = document.getElementById('admin-password').value;
+        const errEl = document.getElementById('login-error');
+        
+        if (!email || !password) {
+            errEl.textContent = "Compila tutti i campi prima di procedere.";
+            errEl.classList.remove('hidden');
+            return;
+        }
+
+        try {
+            const { data, error } = await db.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+            
+            if (data.session) {
+                safeStorage.setItem('admin_logged_in', 'true');
+                errEl.classList.add('hidden');
+                sbloccaDashboard();
+            }
+        } catch (err) {
+            console.error("Login fallito:", err.message);
+            errEl.textContent = "Credenziali non valide: " + err.message;
+            errEl.classList.remove('hidden');
+        }
+    }
+
+    function sbloccaDashboard() {
+        // Nasconde il login overlay con dissolvenza ed abilita la visualizzazione dell'hub
+        const overlay = document.getElementById('login-overlay');
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+        }, 500); // Rimuove dal layout dopo la transizione CSS
+        
+        document.getElementById('dashboard-wrapper').classList.remove('hidden');
+    }
+
+    function mostraLogin() {
+        // Rende visibile il login overlay con una transizione fluida e piacevole
+        const overlay = document.getElementById('login-overlay');
+        overlay.classList.remove('hidden');
+        // Piccolo timeout per innescare la transizione CSS di opacità
+        setTimeout(() => {
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+        }, 50);
+    }
+
+    async function logoutAdmin() {
+        try {
+            await db.auth.signOut();
+        } catch (e) {
+            console.warn("SignOut Supabase fallito o già disconnesso:", e);
+        }
+        safeStorage.removeItem('admin_logged_in');
+        location.reload();
+    }
+</script>
+</body>
+</html>
